@@ -83,7 +83,7 @@ func cliHandler() {
 				}
 			case "get":
 				//Comando para dowload
-				if len(comandoSeparado) > 1 && agenteSelecionado != "" {
+				if len(comandoSeparado) > 0 && agenteSelecionado != "" {
 					comandoSend := &commons.Commando{}
 					comandoSend.Comando = comandoCompleto
 

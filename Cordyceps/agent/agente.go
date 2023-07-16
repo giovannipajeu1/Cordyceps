@@ -31,7 +31,8 @@ var (
 // Dados do Servidor
 const (
 	//Coloque aqui o IP publico para conexão
-	SERVIDOR = "200.98.129.32"
+	//SERVIDOR = "200.98.129.32"
+	SERVIDOR = "127.0.0.1"
 	PORTA    = "9090"
 )
 

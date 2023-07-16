@@ -16,7 +16,7 @@ int main() {
         wchar_t cmd[MAX_PATH * 2];
         swprintf(cmd, MAX_PATH * 2, L"cmd.exe /C \"%s\"", exePath);
 
-        // Resto do código de injeção de memória aqui...
+        
 
         // Liberar a memória alocada
         CoTaskMemFree(downloadsPath);
