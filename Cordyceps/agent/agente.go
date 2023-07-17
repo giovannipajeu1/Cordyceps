@@ -282,8 +282,7 @@ func executaComandoEmShell(comandoCompleto string) (resposta string) {
 		resposta = string(output)
 	} else if runtime.GOOS == "darwin" {
 		output, _ := exec.Command("bash," "-c", comandoCompleto).CombinedOutput()
-	}
-	else {
+	} else {
 		resposta = "Target operating system not implemented"
 	}
 
