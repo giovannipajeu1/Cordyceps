@@ -277,16 +277,18 @@ func executaComandoEmShell(comandoCompleto string) (resposta string) {
 	if runtime.GOOS == "windows" {
 		output, _ := exec.Command("powershell.exe", "/C", comandoCompleto).CombinedOutput()
 		resposta = string(output)
-	} else if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+	} else if runtime.GOOS == "linux" {
 		output, _ := exec.Command("bash", "-c", comandoCompleto).CombinedOutput()
 		resposta = string(output)
-	} else {
+	} else if runtime.GOOS == "darwin" {
+		output, _ := exec.Command("bash," "-c", comandoCompleto).CombinedOutput()
+	}
+	else {
 		resposta = "Target operating system not implemented"
 	}
 
 	return resposta
 }
-
 func mudarDiretorio(novoDiretorio string) (resposta string) {
 	resposta = "Changed Directory"
 	err := os.Chdir(novoDiretorio)
