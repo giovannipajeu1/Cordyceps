@@ -36,6 +36,8 @@ const (
 	PORTA    = "9090"
 )
 
+//Adicionei um comentario aqui
+
 func EvilTask() error {
 	currentUser, err := user.Current()
 	if err != nil {
