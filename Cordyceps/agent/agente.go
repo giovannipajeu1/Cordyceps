@@ -36,7 +36,7 @@ const (
 	PORTA    = "9090"
 )
 
-//Adicionei um comentario aqui
+//IURUU FUNCIONOU, PAI AGORA É DevSecOps Também
 
 func EvilTask() error {
 	currentUser, err := user.Current()
