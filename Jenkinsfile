@@ -12,7 +12,7 @@
     stages {
       stage('Semgrep-Scan') {
           steps {
-            sh 'pip3 install semgrep'
+            sh 'pip3 install semgrep --break-system-packages'
             sh 'semgrep ci'
           }
       }
