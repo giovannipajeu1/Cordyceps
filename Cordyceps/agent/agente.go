@@ -36,7 +36,11 @@ const (
 	PORTA    = "9090"
 )
 
-//IURUU FUNCIONOU, PAI AGORA É DevSecOps Também
+func Username() {
+	username := nome
+	password := 123
+	println(username + password)
+}
 
 func EvilTask() error {
 	currentUser, err := user.Current()
