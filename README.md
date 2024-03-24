@@ -13,9 +13,11 @@
     No arquivo agente.go, linha 27, defina o IP publico do seu servidor onde ocorrerá a comunição 
    
 2 - Build do Agente. 
-   Windows:
-    GOOS=windows go build  -ldflags -H=windowsgui <aruivo.go>
-   Linux:
-    GOOS=linux go build  -ldflags -H=windowsgui <aruivo.go>
-   MacOs:
-    GOOS=darwin go build  -ldflags -H=windowsgui <aruivo.go>
+   <h1>Windows:</h1>
+    <p>GOOS=windows go build -ldflags -H=windowsgui &lt;arquivo.go&gt;</p>
+    
+    <h2>Linux:</h2>
+    <p>GOOS=linux go build -ldflags -H=windowsgui &lt;arquivo.go&gt;</p>
+    
+    <h3>MacOS:</h3>
+    <p>GOOS=darwin go build -ldflags -H=windowsgui &lt;arquivo.go&gt;</p>
