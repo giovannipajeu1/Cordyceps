@@ -10,13 +10,13 @@ Essas instruções permitirão que você obtenha uma cópia do projeto em opera�
 
 Você precisara da Linguagem Golang instalada na sua maquina
 
-```
+
 Como instalar o Golang? 
 <a href="https://go.dev/doc/install">Passo a Passo para instalar o Golang</a>
 
 
 ### 🔧 Instalação
-
+```
 Apos o Golang Instalado, precisamos buildar o agente e o servidor
 
 Buildando Agente e Servidor:
