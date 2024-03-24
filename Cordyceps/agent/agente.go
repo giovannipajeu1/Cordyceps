@@ -15,7 +15,6 @@ import (
 	"time"
 )
 
-// Compile com go build  -ldflags -H=windowsgui <aruivo.go>
 // Mensagens
 var (
 	mensagem    commons.Mensagem
@@ -24,8 +23,7 @@ var (
 
 // Dados do Servidor
 const (
-	//Coloque aqui o IP publico para conexão
-	//SERVIDOR = "192.168.15.8"
+	
 	SERVIDOR = "127.0.0.1"
 	PORTA    = "54321"
 )
