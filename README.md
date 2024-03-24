@@ -28,7 +28,11 @@ GOOS=windows go build  -ldflags -H=windowsgui agente.go
 Agente para Linux <img align="center" height="20" width="20" src="https://raw.githubusercontent.com/devicons/devicon/master/icons/linux/linux-original.svg"> :
 ```
 GOOS=linux go build agente.go
-
+```
+Agente para MacOs <img align="center" height="20" width="20" src="https://raw.githubusercontent.com/devicons/devicon/master/icons/apple/apple-original.svg">  : 
+```
+GOOS=dawrin go build agente.go
+```
 
 Termine com um exemplo de como obter dados do sistema ou como usá-los para uma pequena demonstração.
 
