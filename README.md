@@ -34,10 +34,6 @@ Agente para MacOs <img align="center" height="20" width="20" src="https://raw.gi
 GOOS=dawrin go build agente.go
 ```
 
-## 📦 Implantação
-
-Adicione notas adicionais sobre como implantar isso em um sistema ativo
-
 ## 🛠️ Construído com
 
 *  <img align="center" height="20" width="20" src="https://raw.githubusercontent.com/devicons/devicon/master/icons/go/go-original.svg"> - Linguagem Usada
