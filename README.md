@@ -18,16 +18,14 @@ Como instalar o Golang?
 
 ### 🔧 Instalação
 
-Apos o Golang Instalado, precisamos buildar o agente e o servidor[
+Apos o Golang Instalado, precisamos buildar o agente e o servidor
 ###
 Buildando Agente e Servidor:
 ```
-GOOS=windows go build  -ldflags -H=windowsgui <agente.go> 
+Agente para Windows:
+GOOS=windows go build  -ldflags -H=windowsgui agente.go
 ```
-GOOS=linux go build <agente.go>
-```
-GOOS=darwin go build <agente.go>
-```
+
 
 Termine com um exemplo de como obter dados do sistema ou como usá-los para uma pequena demonstração.
 
