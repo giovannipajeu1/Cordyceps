@@ -23,15 +23,15 @@ Apos o Golang Instalado, precisamos buildar o agente e o servidor
 
 Agente para Windows   <img align="center" height="20" width="20" src="https://raw.githubusercontent.com/devicons/devicon/master/icons/windows11/windows11-original.svg"> :
 ```
-GOOS=windows go build  -ldflags -H=windowsgui agente.go
+GOOS=WINDOWS go build  -ldflags -H=windowsgui agente.go
 ```
 Agente para Linux <img align="center" height="20" width="20" src="https://raw.githubusercontent.com/devicons/devicon/master/icons/linux/linux-original.svg"> :
 ```
-GOOS=linux go build agente.go
+GOOS=LINUX go build agente.go
 ```
 Agente para MacOs <img align="center" height="20" width="20" src="https://raw.githubusercontent.com/devicons/devicon/master/icons/apple/apple-original.svg">  : 
 ```
-GOOS=dawrin go build agente.go
+GOOS=DARWIN go build agente.go
 ```
 
 ## 🛠️ Construído com
