@@ -20,9 +20,8 @@ Como instalar o Golang?
 
 Apos o Golang Instalado, precisamos buildar o agente e o servidor
 ###
-Buildando Agente e Servidor:
 
-Agente para Windows:
+Agente para Windows   <img align="center" height="40" width="50" src="https://raw.githubusercontent.com/devicons/devicon/master/icons/windows11/windows11-original.svg">:
 ```
 GOOS=windows go build  -ldflags -H=windowsgui agente.go
 ```
